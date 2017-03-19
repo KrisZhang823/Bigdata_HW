@@ -1,0 +1,6 @@
+var tf1 = sc.textFile("/yelp/business/business.csv")
+var tf2 = sc.textFile("/yelp/review/review.csv")
+var tf3 = sc.textFile("/yelp/user/user.csv")
+var b = tf1.map(line => line.split('^')).map(a=> (a(0),a(1))).filter(x => x._2.contains(" TX "))
+var r = tf2.map(line => line.split('^')).map(a=> (a(2),a(3).toDouble)).reduceByKey((x,y) => x+y)
+var res = r.join(b).map(x => (x._1,x._2._1)).collect().foreach(println)
