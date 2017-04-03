@@ -1,0 +1,28 @@
+//http://fimi.ua.ac.be/data/chess.dat
+import org.apache.spark.mllib.fpm.FPGrowth
+import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.fpm.AssociationRules
+
+val data = sc.textFile("../data/bigdata/chess.dat")
+
+val transactions: RDD[Array[String]] = data.map(s => s.trim.split(' '))
+
+val fpg = new FPGrowth().setMinSupport(0.6).setNumPartitions(4)
+val model = fpg.run(transactions)
+
+
+//val frequentItems = model.freqItemsets.collect().foreach { itemset =>
+//  println(itemset.items.mkString("[", ",", "]") + ", " + itemset.freq)
+//}
+val freqItemsets = model.freqItemsets
+freqItemsets.count
+val ar = new AssociationRules().setMinConfidence(0.8)
+val results = ar.run(freqItemsets)
+results.count
+
+
+results.collect().foreach { rule =>
+  println("[" + rule.antecedent.mkString(",")
+    + "=>"
+    + rule.consequent.mkString(",") + "]," + rule.confidence)
+}

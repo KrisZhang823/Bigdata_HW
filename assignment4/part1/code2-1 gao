@@ -1,0 +1,69 @@
+import org.apache.spark.ml.classification.NaiveBayes
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.sql.Row
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.regression.LabeledPoint
+
+// Load the data stored in LIBSVM format as a DataFrame.
+val data = spark.read.format("libsvm").load("data/bigdata/rst.data")
+
+// Split the data into training and test sets (30% held out for testing)
+val Array(trainingData, testData) = data.randomSplit(Array(0.7, 0.3), seed = 1234L)
+
+// Train a NaiveBayes model.
+val model = new NaiveBayes().fit(trainingData)
+
+//------------------------------------------------------
+
+val predictions = model.transform(testData)
+val predictionAndLabelsRDD = predictions.select("prediction", "label").rdd;
+
+val predictionAndLabels = predictionAndLabelsRDD.map{
+   case Row(key: Double, value: Double) =>
+     key -> value
+ }
+
+//---------------metrics------------------------
+
+// Instantiate metrics object
+val metrics = new MulticlassMetrics(predictionAndLabels)
+
+// Confusion matrix
+println("Confusion matrix:")
+println(metrics.confusionMatrix)
+
+// Overall Statistics
+val accuracy = metrics.accuracy
+println("Summary Statistics")
+println(s"Accuracy = $accuracy")
+
+// Precision by label
+val labels = metrics.labels
+labels.foreach { l =>
+  println(s"Precision($l) = " + metrics.precision(l))
+}
+
+// Recall by label
+labels.foreach { l =>
+  println(s"Recall($l) = " + metrics.recall(l))
+}
+
+// False positive rate by label
+labels.foreach { l =>
+  println(s"FPR($l) = " + metrics.falsePositiveRate(l))
+}
+
+// F-measure by label
+labels.foreach { l =>
+  println(s"F1-Score($l) = " + metrics.fMeasure(l))
+}
+
+println("Accuracy = " + (accuracy))
+println("Test Error = " + (1.0 - accuracy))
+
+// Weighted stats
+println(s"Weighted precision: ${metrics.weightedPrecision}")
+println(s"Weighted recall: ${metrics.weightedRecall}")
+println(s"Weighted F1 score: ${metrics.weightedFMeasure}")
+println(s"Weighted false positive rate: ${metrics.weightedFalsePositiveRate}")
